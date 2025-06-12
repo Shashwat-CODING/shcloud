@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Live Stock Rates</title>
+    <!-- Add Socket.IO client library -->
+    <script src="socket.js"></script>
+    <!-- Add SF Pro Display font -->
+    <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
+    <style>
+        :root {
+            --background-primary: #000000;
+            --background-secondary: #1c1c1e;
+            --background-tertiary: #2c2c2e;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --accent-positive: #30d158;
+            --accent-negative: #ff453a;
+            --card-background: rgba(28, 28, 30, 0.8);
+            --blur-background: rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 8px 0;
+            position: sticky;
+            top: 0;
+            background: var(--background-primary);
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        h1 {
+            color: var(--text-primary);
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        #currentDate {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin: 4px 0;
+            font-weight: 500;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 16px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .connected {
+            background: rgba(48, 209, 88, 0.1);
+            color: var(--accent-positive);
+            border: 1px solid rgba(48, 209, 88, 0.2);
+        }
+
+        .disconnected {
+            background: rgba(255, 69, 58, 0.1);
+            color: var(--accent-negative);
+            border: 1px solid rgba(255, 69, 58, 0.2);
+        }
+
+        .search-container {
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        #stockSearch {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 14px;
+            background: var(--background-secondary);
+            color: var(--text-primary);
+            font-size: 16px;
+            font-family: inherit;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        #stockSearch:focus {
+            outline: none;
+            background: var(--background-tertiary);
+        }
+
+        #stockSearch::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .stock-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 2px;
+        }
+
+        .stock-item {
+            background: var(--card-background);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stock-item:active {
+            transform: scale(0.98);
+            background: var(--background-tertiary);
+        }
+
+        .stock-info {
+            flex-grow: 1;
+            margin-right: 8px;
+        }
+
+        .stock-symbol {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 1px;
+            color: var(--text-primary);
+        }
+
+        .stock-name {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .stock-price-change {
+            text-align: right;
+            min-width: 90px;
+        }
+
+        .stock-price {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: var(--text-primary);
+        }
+
+        .stock-change {
+            display: inline-block;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .change-positive {
+            background: rgba(48, 209, 88, 0.1);
+            color: var(--accent-positive);
+        }
+
+        .change-negative {
+            background: rgba(255, 69, 58, 0.1);
+            color: var(--accent-negative);
+        }
+
+        .edit-button {
+            background: var(--background-secondary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .edit-button:active {
+            transform: scale(0.96);
+            background: var(--background-tertiary);
+        }
+
+        @media (hover: hover) {
+            .stock-item:hover {
+                transform: translateY(-2px);
+                background: var(--background-tertiary);
+            }
+
+            .edit-button:hover {
+                background: var(--background-tertiary);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+            }
+
+            .stock-item {
+                padding: 14px;
+            }
+        }
+
+        @supports (-webkit-touch-callout: none) {
+            .stock-list {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+
+        /* Flash animations */
+        @keyframes flashGreen {
+            0% { background: var(--card-background); }
+            50% { background: rgba(48, 209, 88, 0.15); }
+            100% { background: var(--card-background); }
+        }
+
+        @keyframes flashRed {
+            0% { background: var(--card-background); }
+            50% { background: rgba(255, 69, 58, 0.15); }
+            100% { background: var(--card-background); }
+        }
+
+        .flash-positive {
+            animation: flashGreen 2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .flash-negative {
+            animation: flashRed 2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Stock List and Item Styling */
+        .stock-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .stock-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            background-color: #1c1c1e;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+
+        @keyframes flashGreen {
+            0% { background-color: #1c1c1e; }
+            10% { background-color: rgba(52, 199, 89, 0.3); }
+            90% { background-color: rgba(52, 199, 89, 0.3); }
+            100% { background-color: #1c1c1e; }
+        }
+
+        @keyframes flashRed {
+            0% { background-color: #1c1c1e; }
+            10% { background-color: rgba(255, 59, 48, 0.3); }
+            90% { background-color: rgba(255, 59, 48, 0.3); }
+            100% { background-color: #1c1c1e; }
+        }
+
+        .flash-positive {
+            animation: flashGreen 2s ease;
+        }
+
+        .flash-negative {
+            animation: flashRed 2s ease;
+        }
+
+        .stock-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .stock-info {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .stock-symbol {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #ffffff;
+        }
+
+        .stock-name {
+            font-size: 0.85rem;
+            color: #8e8e93;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stock-price-change {
+            text-align: right;
+            margin-left: 15px;
+            min-width: 120px;
+        }
+
+        .stock-price {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #ffffff;
+        }
+
+        .stock-change {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .change-positive {
+            background-color: rgba(52, 199, 89, 0.15);
+            color: #34c759;
+            border: 1px solid rgba(52, 199, 89, 0.3);
+        }
+
+        .change-negative {
+            background-color: rgba(255, 59, 48, 0.15);
+            color: #ff3b30;
+            border: 1px solid rgba(255, 59, 48, 0.3);
+        }
+
+        /* Search/Filter Styling */
+        .search-container {
+            padding: 12px 0 20px 0;
+            margin-bottom: 0;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #stockSearch {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 12px;
+            background-color: #1c1c1e;
+            color: #ffffff;
+            font-size: 1rem;
+            box-sizing: border-box;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: box-shadow 0.2s ease;
+        }
+
+        #stockSearch:focus {
+            outline: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        #stockSearch::placeholder {
+            color: #8e8e93;
+        }
+
+        /* Loading/No Data Styling */
+        .info-message {
+            text-align: center;
+            padding: 20px;
+            color: #8e8e93;
+            font-size: 1rem;
+            background-color: #1c1c1e;
+            border-radius: 12px;
+            margin: 10px 0;
+        }
+
+         /* Hide original table display */
+        #stockTable {
+            display: none;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--blur-background);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 1000;
+        }
+
+        .modal-content.stock-details-content {
+            max-width: 500px;
+            background: var(--background-primary);
+            border-radius: 24px;
+            margin: 20px;
+            padding: 0;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-title {
+            font-size: 17px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+            margin: -8px;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stock-details-header {
+            padding: 24px;
+            background: var(--background-secondary);
+            position: relative;
+        }
+
+        .stock-details-symbol {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .stock-details-expiry {
+            font-size: 15px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        .stock-details-price {
+            font-size: 34px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 24px;
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .price-change {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--accent-positive);
+        }
+
+        .price-change.negative {
+            color: var(--accent-negative);
+        }
+
+        .last-update {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .refresh-button {
+            background: var(--background-tertiary);
+            border: none;
+            color: var(--text-secondary);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-button:active {
+            transform: scale(0.9);
+        }
+
+        .stock-details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .detail-item {
+            background: var(--background-secondary);
+            padding: 16px;
+            border-radius: 16px;
+            transition: transform 0.2s ease;
+        }
+
+        .detail-item:active {
+            transform: scale(0.98);
+        }
+
+        .detail-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .refresh-button.loading svg {
+            animation: spin 1s linear infinite;
+        }
+
+        @media (max-width: 480px) {
+            .modal-content.stock-details-content {
+                margin: 0;
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            .stock-details-grid {
+                padding: 12px;
+                gap: 8px;
+            }
+
+            .detail-item {
+                padding: 14px;
+            }
+
+            .stock-details-header {
+                padding: 20px;
+            }
+        }
+
+        @media (hover: hover) {
+            .refresh-button:hover {
+                background: var(--background-tertiary);
+                color: var(--text-primary);
+            }
+
+            .close-modal:hover {
+                background: var(--background-secondary);
+            }
+
+            .detail-item:hover {
+                transform: translateY(-2px);
+            }
+        }
+
+        /* Stock Selection Modal */
+        .stock-selection {
+            max-height: 60vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .stock-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #2c2c2e;
+            transition: background-color 0.2s ease;
+        }
+
+        .stock-checkbox:hover {
+            background-color: #2c2c2e;
+        }
+
+        .stock-checkbox label {
+            margin-left: 12px;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .modal-button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .select-all {
+            background-color: #2c2c2e;
+            color: #ffffff;
+        }
+
+        .select-all:hover {
+            background-color: #3c3c3e;
+        }
+
+        .apply-changes {
+            background-color: #34c759;
+            color: #ffffff;
+        }
+
+        .apply-changes:hover {
+            background-color: #30b350;
+        }
+
+        /* Edit Button Styles */
+        .edit-button {
+            background-color: #2c2c2e;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .edit-button:hover {
+            background-color: #3c3c3e;
+            transform: translateY(-1px);
+        }
+
+        /* Header Container for Stocks title and Edit button */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            padding: 0; /* Removed horizontal padding */
+        }
+
+        .header-container h1 {
+            margin: 0;
+        }
+
+        /* Checkbox Styles */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #34c759;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-container">
+            <h1>Stocks</h1>
+            <button class="edit-button" onclick="openModal()">
+                <span>EDIT</span>
+            </button>
+        </div>
+        <p id="currentDate"></p>
+        
+        <div class="search-container">
+            <input type="text" id="stockSearch" placeholder="Search">
+        </div>
+        <div id="status" class="status">Connecting...</div>
+        
+        <ul class="stock-list" id="stockList">
+            <li class="info-message">Loading data...</li>
+        </ul>
+    </div>
+
+    <!-- Stock Details Modal -->
+    <div id="stockDetailsModal" class="modal">
+        <div class="modal-content stock-details-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Stock Details</h2>
+                <button class="close-modal" onclick="closeDetailsModal()">&times;</button>
+            </div>
+            <div class="stock-details-body">
+                <div class="stock-details-header">
+                    <div class="stock-details-symbol"></div>
+                    <div class="stock-details-price"></div>
+                </div>
+                <div class="stock-details-grid">
+                    <!-- Details will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Selection Modal -->
+    <div id="stockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Select Stocks</h2>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-button select-all" onclick="toggleSelectAll()">Select All</button>
+            </div>
+            <div class="stock-selection" id="stockSelection">
+                <!-- Stock checkboxes will be added here dynamically -->
+            </div>
+            <div class="modal-actions">
+                <button class="modal-button apply-changes" onclick="applyStockSelection()">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const stockListUl = document.getElementById('stockList');
+        const stockSearchInput = document.getElementById('stockSearch');
+        let socket = null;
+        let currentStockData = []; // Store the current full data
+        let previousPrices = new Map(); // Store previous prices for animation
+        let selectedStocks = new Set(); // Store selected stock symbols
+        let allStocks = []; // Store all available stocks
+
+        function connectSocket() {
+            // Close existing connection if any
+            if (socket) {
+                socket.disconnect();
+            }
+            
+            // Initialize Socket.IO connection
+            socket = io('https://backend-52f8.onrender.com/', {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000,
+                timeout: 20000
+            });
+
+            socket.on('connect', () => {
+                statusDiv.textContent = 'Connected to live updates';
+                statusDiv.className = 'status connected';
+            });
+
+            socket.on('disconnect', () => {
+                statusDiv.textContent = 'Disconnected from live updates';
+                statusDiv.className = 'status disconnected';
+                
+                // Attempt to reconnect after 5 seconds
+                setTimeout(connectSocket, 1000);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Socket.IO Error:', error);
+                statusDiv.textContent = 'Connection error';
+                statusDiv.className = 'status disconnected';
+            });
+
+            socket.on('stockData', (data) => {
+                currentStockData = data.data;
+                allStocks = data.data; // Store all available stocks
+                displayStocks(currentStockData);
+            });
+        }
+
+        // Initial data fetch
+        fetch('https://backend-52f8.onrender.com/data')
+            .then(response => response.json())
+            .then(response => {
+                 currentStockData = response.data; // Store initial data
+                 allStocks = response.data; // Store all available stocks
+                 // Store initial prices for comparison
+                 currentStockData.forEach(stock => {
+                     previousPrices.set(stock.Symbol, parseFloat(stock['Last Traded Price']));
+                 });
+
+                 // Load selected stocks from local storage
+                 const savedStocks = localStorage.getItem('selectedStocks');
+                 if (savedStocks) {
+                     try {
+                         const parsedStocks = JSON.parse(savedStocks);
+                         if (Array.isArray(parsedStocks)) {
+                             selectedStocks = new Set(parsedStocks);
+                         } else {
+                             console.error('Local storage data is not an array:', parsedStocks);
+                         }
+                     } catch (e) {
+                         console.error('Error parsing local storage data:', e);
+                     }
+                 }
+
+                 displayStocks(currentStockData); // Display data (filtered by selection if loaded)
+            })
+            .catch(error => {
+                console.error('Error fetching initial data:', error);
+                 stockListUl.innerHTML = '<li class="info-message">Error loading data. Please refresh the page.</li>';
+                 statusDiv.textContent = 'Failed to connect';
+                 statusDiv.className = 'status disconnected';
+            });
+
+        // Connect to WebSocket
+        connectSocket();
+
+        // Function to display stocks based on current data and filter
+        function displayStocks(data) {
+            const filterText = stockSearchInput.value.toLowerCase();
+            let filteredData = data.filter(stock => 
+                stock.Symbol.toLowerCase().includes(filterText)
+            );
+
+            // Apply stock selection filter if any stocks are selected
+            if (selectedStocks.size > 0) {
+                filteredData = filteredData.filter(stock => 
+                    selectedStocks.has(stock.Symbol)
+                );
+            }
+
+            if (!filteredData || filteredData.length === 0) {
+                stockListUl.innerHTML = '<li class="info-message">No matching stocks found.</li>';
+                return;
+            }
+
+            let listHTML = '';
+            filteredData.forEach(stock => {
+                const currentPrice = parseFloat(stock['Last Traded Price']);
+                const netChange = parseFloat(stock['Net Change In Rs']);
+                const percentageChange = parseFloat(stock['% Net Change In Rs']);
+                const previousPrice = previousPrices.get(stock.Symbol);
+
+                let flashClass = '';
+                if (previousPrice !== undefined && currentPrice !== previousPrice) {
+                    flashClass = currentPrice > previousPrice ? 'flash-positive' : 'flash-negative';
+                }
+
+                const changeClass = netChange >= 0 ? 'change-positive' : 'change-negative';
+                const changeSign = netChange >= 0 ? '+' : '';
+
+                // Update previous price for the next update
+                previousPrices.set(stock.Symbol, currentPrice);
+
+                listHTML += `
+                    <li class="stock-item ${flashClass}" onclick="openDetailsModal(${JSON.stringify(stock).replace(/"/g, '&quot;')})">
+                        <div class="stock-info">
+                            <div class="stock-symbol">${stock.Symbol}</div>
+                            <div class="stock-name">${stock['Exchange']} • ${stock['Ser/Exp']}</div>
+                        </div>
+                        
+                        <div class="stock-price-change">
+                            <div class="stock-price">₹${stock['Last Traded Price']}</div>
+                            <div class="stock-change ${changeClass}">${changeSign}${stock['Net Change In Rs']} (${changeSign}${stock['% Net Change In Rs']}%)</div>
+                        </div>
+                    </li>
+                `;
+            });
+            stockListUl.innerHTML = listHTML;
+
+            // Remove animation classes after they complete
+            const items = stockListUl.getElementsByClassName('stock-item');
+            Array.from(items).forEach(item => {
+                if (item.classList.contains('flash-positive') || item.classList.contains('flash-negative')) {
+                    setTimeout(() => {
+                        item.classList.remove('flash-positive', 'flash-negative');
+                    }, 2000);
+                }
+            });
+        }
+
+        // Add event listener for search input
+        stockSearchInput.addEventListener('input', () => {
+            displayStocks(currentStockData); // Filter based on the currently held data
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+
+        // Display current date
+        const dateElement = document.getElementById('currentDate');
+        const now = new Date();
+        const options = { month: 'long', day: 'numeric' };
+        dateElement.textContent = now.toLocaleDateString(undefined, options);
+
+        function openModal() {
+            document.getElementById('stockModal').style.display = 'block';
+            populateStockSelection();
+        }
+
+        function closeModal() {
+            document.getElementById('stockModal').style.display = 'none';
+        }
+
+        function populateStockSelection() {
+            const stockSelection = document.getElementById('stockSelection');
+            stockSelection.innerHTML = '';
+
+            allStocks.forEach(stock => {
+                const div = document.createElement('div');
+                div.className = 'stock-checkbox';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `stock-${stock.Symbol}`;
+                checkbox.checked = selectedStocks.has(stock.Symbol);
+                checkbox.onchange = () => toggleStock(stock.Symbol);
+
+                const label = document.createElement('label');
+                label.htmlFor = `stock-${stock.Symbol}`;
+                label.textContent = `${stock.Symbol}`;
+
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                stockSelection.appendChild(div);
+            });
+        }
+
+        function toggleStock(symbol) {
+            if (selectedStocks.has(symbol)) {
+                selectedStocks.delete(symbol);
+            } else {
+                selectedStocks.add(symbol);
+            }
+        }
+
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('.stock-checkbox input[type="checkbox"]');
+            const allSelected = Array.from(checkboxes).every(cb => cb.checked);
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = !allSelected;
+                const symbol = checkbox.id.replace('stock-', '');
+                if (!allSelected) {
+                    selectedStocks.add(symbol);
+                } else {
+                    selectedStocks.delete(symbol);
+                }
+            });
+        }
+
+        function applyStockSelection() {
+            // Save selected stocks to local storage
+            localStorage.setItem('selectedStocks', JSON.stringify(Array.from(selectedStocks)));
+            displayStocks(currentStockData);
+            closeModal();
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const stockModal = document.getElementById('stockModal');
+            const stockDetailsModal = document.getElementById('stockDetailsModal');
+            if (event.target === stockModal) {
+                closeModal();
+            }
+            if (event.target === stockDetailsModal) {
+                closeDetailsModal();
+            }
+        }
+
+        async function openDetailsModal(stock) {
+            const modal = document.getElementById('stockDetailsModal');
+            const symbolElement = modal.querySelector('.stock-details-symbol');
+            const priceElement = modal.querySelector('.stock-details-price');
+            const gridElement = modal.querySelector('.stock-details-grid');
+            const headerElement = modal.querySelector('.stock-details-header');
+
+            // Show initial data
+            updateDetailsModal(stock);
+            modal.style.display = 'block';
+
+            // Fetch fresh data
+            await refreshStockDetails(stock.Symbol);
+        }
+
+        async function refreshStockDetails(symbol) {
+            try {
+                const refreshButton = document.querySelector('.refresh-button');
+                if (refreshButton) {
+                    refreshButton.classList.add('loading');
+                }
+
+                const response = await fetch('https://backend-52f8.onrender.com/data');
+                const data = await response.json();
+                
+                const updatedStock = data.data.find(s => s.Symbol === symbol);
+                if (updatedStock) {
+                    updateDetailsModal(updatedStock);
+                }
+            } catch (error) {
+                console.error('Error fetching fresh data:', error);
+            } finally {
+                const refreshButton = document.querySelector('.refresh-button');
+                if (refreshButton) {
+                    refreshButton.classList.remove('loading');
+                }
+            }
+        }
+
+        function updateDetailsModal(stock) {
+            const modal = document.getElementById('stockDetailsModal');
+            const symbolElement = modal.querySelector('.stock-details-symbol');
+            const priceElement = modal.querySelector('.stock-details-price');
+            const gridElement = modal.querySelector('.stock-details-grid');
+            const headerElement = modal.querySelector('.stock-details-header');
+
+            const netChange = parseFloat(stock['Net Change In Rs']);
+            const isPositive = netChange >= 0;
+            headerElement.className = `stock-details-header ${isPositive ? '' : 'negative'}`;
+
+            // Update header information
+            symbolElement.innerHTML = `
+                <div>
+                    ${stock.Symbol} (${stock.Exchange})
+                    <div class="stock-details-expiry">${stock['Ser/Exp']}</div>
+                </div>
+                <div class="last-update">
+                    ${stock['Last Update Time']}
+                    <button class="refresh-button" onclick="refreshStockDetails('${stock.Symbol}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            const changeDisplay = `
+                <span class="price-change ${isPositive ? '' : 'negative'}">
+                    ${isPositive ? '+' : ''}${stock['Net Change In Rs']}
+                    (${isPositive ? '+' : ''}${stock['% Net Change In Rs']}%)
+                </span>
+            `;
+
+            priceElement.innerHTML = `₹${stock['Last Traded Price']} ${changeDisplay}`;
+            
+            // Create grid items for each detail
+            const details = [
+                { label: 'Buy Price', value: `₹${stock['Buy Price']}` },
+                { label: 'Sell Price', value: `₹${stock['Sell Price']}` },
+                { label: 'Day Range', value: stock['DPR'].replace(' - ', '\n-\n') },
+                { label: 'Open Interest', value: stock['OI'] },
+                { label: 'Buy Quantity', value: stock['TBQ'] },
+                { label: 'Sell Quantity', value: stock['TSQ'] }
+            ];
+
+            gridElement.innerHTML = details.map(detail => `
+                <div class="detail-item">
+                    <div class="detail-label">${detail.label}</div>
+                    <div class="detail-value">${detail.value}</div>
+                </div>
+            `).join('');
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('stockDetailsModal').style.display = 'none';
+        }
+
+    </script>
+</body>
+</html> 
