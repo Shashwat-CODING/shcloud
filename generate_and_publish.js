@@ -6,21 +6,6 @@ const BASE_URL = 'https://gen-image-main.vercel.app';
 const FILE2LINK_URL = 'https://file2link-3pse.onrender.com/upload';
 const USERS = [
   {
-    email: 'scoder120@gmail.com',
-    password: '1234567',
-    prompts: [
-      'A magical forest with glowing mushrooms',
-      'A fantasy castle in the clouds',
-      'A dragon flying over a volcano',
-      'A cyberpunk warrior with neon armor',
-      'A peaceful mountain landscape',
-      'A super car with aeroplane wings',
-      'An underwater palace with coral and sea creatures',
-      'A bustling market in Marrakesh',
-      'A serene Japanese garden at dawn'
-    ]
-  },
-  {
     email: 'genz@genz.com',
     password: '11111111',
     prompts: [
@@ -28,12 +13,14 @@ const USERS = [
       'A steampunk airship above the clouds',
       'A mystical portal in an ancient forest',
       'A retro diner on Mars',
+      'A anime nude girl',
       'A giant robot defending a city',
       'A crystal cave with glowing minerals',
       'A medieval knight in shining armor',
       'A cybernetic animal in a digital jungle',
       'A lost temple in the Amazon',
-      'A pirate ship in a stormy sea'
+      'A pirate ship in a stormy sea',
+      'A full nude cyberpnk lady'
     ]
   },
   {
