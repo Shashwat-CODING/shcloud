@@ -9,9 +9,6 @@ const USERS = [
     email: 'scoder120@gmail.com',
     password: '1234567',
     prompts: [
-      'A futuristic city at sunset',
-      'A robot painting a portrait',
-      'A neon-lit street at night',
       'A magical forest with glowing mushrooms',
       'A fantasy castle in the clouds',
       'A dragon flying over a volcano',
