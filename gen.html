@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate & Publish Images (Flux)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+            text-align: center;
+        }
+
+        .start-section {
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 20px 40px;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-success:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .status {
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+
+        .log-container {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: left;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        .log-info {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .log-success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .log-error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .log-warning {
+            background: #fff8e1;
+            color: #f57c00;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            width: 0%;
+            border-radius: 15px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Auto Image Generator</h1>
+            <p>Automated Flux Image Generation & Community Publishing</p>
+        </div>
+
+        <div class="content">
+            <div class="start-section">
+                <button id="startBtn" class="btn btn-success" onclick="startGeneration()">
+                    🚀 START GENERATION
+                </button>
+            </div>
+
+            <div id="status" class="status status-info">
+                Ready to generate images for all users...
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div id="totalTasks" class="stat-number">0</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-item">
+                    <div id="completedTasks" class="stat-number">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-item">
+                    <div id="successCount" class="stat-number">0</div>
+                    <div class="stat-label">Success</div>
+                </div>
+                <div class="stat-item">
+                    <div id="errorCount" class="stat-number">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+            </div>
+
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+
+            <div class="log-container" id="logContainer">
+                <div class="log-entry log-info">System initialized. Click START GENERATION to begin automated image generation for all users.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'https://gen-image-main.vercel.app';
+        const FILE2LINK_URL = 'https://file2link-3pse.onrender.com/upload';
+        
+        const USERS = [
+            {
+                email: 'genz@genz.com',
+                password: '11111111',
+                prompts: [
+                    'A giant robot defending a city',
+                    'A crystal cave with glowing minerals',
+                    'A medieval knight in shining armor',
+                    'A cybernetic animal in a digital jungle',
+                    'A lost temple in the Amazon',
+                    'A pirate ship in a stormy sea'
+                ]
+            },
+            {
+                email: 'alph@gmail.com',
+                password: '7777777777',
+                prompts: [
+                    'A woman in lingerie posing on a velvet couch', 
+                    'A couple embracing under dim lighting', 
+                    'A person relaxing in a swimsuit by the pool', 
+                    'A fantasy elf warrior in golden armor', 
+                    'A professional portrait in business attire', 
+                    'A suggestive silhouette behind frosted glass', 
+                    'Close-up of lips with glossy lipstick', 
+                    'A muscular man in an open shirt by the beach', 
+                    'A yoga pose in tight-fitting sportswear', 
+                    'Romantic candle-lit dinner with soft music', 
+                    'A person sleeping peacefully under moonlight', 
+                    'Seductive glance over the shoulder in red dress',
+                    'A spaceship landing on an alien planet',
+                    'A haunted house on a hill',
+                    'A peaceful lakeside cabin in autumn'
+                ]
+            },
+            {
+                email: 'user4@example.com',
+                password: 'password4',
+                prompts: [
+                    'A neon-lit cyberpunk alley',
+                    'A futuristic motorcycle race',
+                    'A magical deer in a misty forest',
+                    'A city skyline at sunrise',
+                    'A robot chef cooking in a kitchen',
+                    'A fantasy castle on a floating island',
+                    'A glowing jellyfish in the deep sea',
+                    'A samurai in a bamboo forest',
+                    'A retro-futuristic car on a desert road',
+                    'A wizard casting a spell',
+                    'A bustling bazaar in Istanbul',
+                    'A peaceful zen garden'
+                ]
+            },
+            {
+                email: 'user5@example.com',
+                password: 'password5',
+                prompts: [
+                    'A dragon curled around a mountain',
+                    'A futuristic city with flying cars',
+                    'A magical fox in a snowy forest',
+                    'A pirate treasure cave',
+                    'A superhero team in action',
+                    'A glowing portal in a stone archway',
+                    'A steampunk robot butler',
+                    'A fantasy airship battle',
+                    'A neon sign in a rainy city',
+                    'A peaceful village at dusk'
+                ]
+            }
+        ];
+
+        const ASPECTS = ['16:9', '9:16', '1:1'];
+        let totalTasks = 0;
+        let completedTasks = 0;
+        let successCount = 0;
+        let errorCount = 0;
+        let isRunning = false;
+
+        function getRandomAspect() {
+            return ASPECTS[Math.floor(Math.random() * ASPECTS.length)];
+        }
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateProgress() {
+            const progressFill = document.getElementById('progressFill');
+            const percentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+            progressFill.style.width = `${percentage}%`;
+        }
+
+        function updateStats() {
+            document.getElementById('totalTasks').textContent = totalTasks;
+            document.getElementById('completedTasks').textContent = completedTasks;
+            document.getElementById('successCount').textContent = successCount;
+            document.getElementById('errorCount').textContent = errorCount;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status status-${type}`;
+        }
+
+        async function uploadToFile2Link(imageUrl) {
+            try {
+                // Download image
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('image', blob, 'image.jpg');
+                
+                // Upload to File2Link
+                const uploadRes = await fetch(FILE2LINK_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!uploadRes.ok) {
+                    throw new Error(`File2Link upload failed: ${uploadRes.status}`);
+                }
+                
+                const result = await uploadRes.json();
+                return result.url;
+            } catch (e) {
+                log(`File2Link upload failed: ${e.message}`, 'error');
+                throw e;
+            }
+        }
+
+        async function startGeneration() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            const startBtn = document.getElementById('startBtn');
+            startBtn.disabled = true;
+            startBtn.textContent = '⏳ GENERATING...';
+            
+            // Reset counters
+            totalTasks = USERS.reduce((sum, user) => sum + user.prompts.length, 0);
+            completedTasks = 0;
+            successCount = 0;
+            errorCount = 0;
+            updateStats();
+            updateProgress();
+            
+            updateStatus('Starting automated generation for all users...', 'info');
+            log(`Starting generation for ${USERS.length} users with ${totalTasks} total prompts`, 'info');
+
+            try {
+                for (const user of USERS) {
+                    await runForUser(user);
+                }
+                
+                updateStatus('All generations completed successfully!', 'success');
+                log('All generations completed!', 'success');
+            } catch (e) {
+                updateStatus(`Generation completed with errors: ${e.message}`, 'warning');
+                log(`Generation completed with errors: ${e.message}`, 'warning');
+            } finally {
+                isRunning = false;
+                startBtn.disabled = false;
+                startBtn.textContent = '🚀 START GENERATION';
+            }
+        }
+
+        async function runForUser(user) {
+            let token;
+            try {
+                const response = await fetch(`${BASE_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: user.email, password: user.password })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    log(`Login failed for ${user.email}: ${error.error}`, 'error');
+                    errorCount++;
+                    return;
+                }
+
+                const data = await response.json();
+                token = data.token;
+                log(`Logged in as ${user.email}`, 'success');
+            } catch (e) {
+                log(`Login failed for ${user.email}: ${e.message}`, 'error');
+                errorCount++;
+                return;
+            }
+
+            for (const prompt of user.prompts) {
+                const aspect = getRandomAspect();
+                await generateAndPublish(prompt, aspect, token, user.email);
+                completedTasks++;
+                updateProgress();
+                updateStats();
+            }
+        }
+
+        async function generateAndPublish(prompt, aspect, token, userEmail) {
+            try {
+                // Generate image using Flux model
+                const genRes = await fetch(`${BASE_URL}/api/generate/flux?prompt=${encodeURIComponent(prompt)}&aspect=${encodeURIComponent(aspect)}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!genRes.ok) {
+                    const error = await genRes.json();
+                    throw new Error(error.error || 'Generation failed');
+                }
+
+                const genData = await genRes.json();
+                let imageUrl = genData.imageUrl;
+                if (imageUrl && typeof imageUrl === 'object' && imageUrl.url) imageUrl = imageUrl.url;
+                if (!genData.success || !imageUrl || typeof imageUrl !== 'string') {
+                    throw new Error(genData.error || 'No valid imageUrl in response');
+                }
+
+                log(`Generated image for prompt "${prompt}" [${aspect}] (${userEmail})`, 'success');
+
+                // Upload to File2Link
+                let uploadedUrl;
+                try {
+                    uploadedUrl = await uploadToFile2Link(imageUrl);
+                    log(`Uploaded to File2Link: ${uploadedUrl}`, 'success');
+                } catch (e) {
+                    log(`Skipping publish due to upload failure`, 'error');
+                    errorCount++;
+                    return;
+                }
+
+                // Add to community gallery
+                const uploadRes = await fetch(`${BASE_URL}/api/add-community-image`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        originalUrl: imageUrl,
+                        uploadedUrl,
+                        prompt
+                    })
+                });
+
+                if (uploadRes.ok) {
+                    const result = await uploadRes.json();
+                    log(`Published to community: ${result.image.id}`, 'success');
+                    successCount++;
+                } else {
+                    const error = await uploadRes.json();
+                    log(`Failed to publish: ${error.error}`, 'error');
+                    errorCount++;
+                }
+            } catch (e) {
+                log(`Error for prompt "${prompt}" [${aspect}] (${userEmail}): ${e.message}`, 'error');
+                errorCount++;
+            }
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            log('System initialized. Ready to generate images.', 'info');
+            updateStats();
+        };
+    </script>
+</body>
+</html> 
