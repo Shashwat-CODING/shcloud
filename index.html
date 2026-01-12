@@ -297,7 +297,7 @@
 
         // Fetch Data
         async function init() {
-            const res = await fetch('https://raw.githubusercontent.com/Shashwat-CODING/shcloud/refs/heads/main/data.json');
+            const res = await fetch('https://yt2ia.zeabur.app/api/data');
             const json = await res.json();
             allSongs = json.data;
             filtered = allSongs;
